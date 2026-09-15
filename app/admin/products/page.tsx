@@ -1,22 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Trash2, Edit3, ExternalLink, Star } from 'lucide-react';
+import { Plus, Search, Trash2, Edit3, Eye, Star, Loader2, Filter, ChevronDown, Check } from 'lucide-react';
 import { fetchAdminProducts, fetchAdminCategories } from '@/lib/queries/admin';
 import { toggleProductActive, toggleProductFeatured, deleteProduct } from '@/lib/actions/product-actions';
-import { t } from '@/i18n';
+import { useAdminI18n } from '@/lib/i18n/admin-i18n';
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
+  const { tAdmin, isArabic } = useAdminI18n();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState('all');
+  const [isCatOpen, setIsCatOpen] = useState(false);
+  const catDropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ['admin-products'],
-    queryFn: fetchAdminProducts,
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (catDropdownRef.current && !catDropdownRef.current.contains(event.target as Node)) {
+        setIsCatOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounce search query to prevent excessive backend queries
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Backend Supabase query
+  const { data: products, isLoading, isFetching } = useQuery({
+    queryKey: ['admin-products', debouncedSearch, selectedCat],
+    queryFn: () => fetchAdminProducts({ search: debouncedSearch, categoryId: selectedCat }),
   });
 
   const { data: categories } = useQuery({
@@ -51,24 +75,16 @@ export default function AdminProductsPage() {
     },
   });
 
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le maillot "${name}" ? Cette action est irréversible.`)) {
+  const handleDelete = (id: string) => {
+    if (confirm(tAdmin('confirmDelete'))) {
       deleteMutation.mutate(id);
     }
   };
 
-  // Filtering
-  const filteredProducts = (products || []).filter((p) => {
-    const matchesCat = selectedCat === 'all' || p.category_id === selectedCat;
-    const q = search.toLowerCase().trim();
-    const matchesSearch =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.player.toLowerCase().includes(q) ||
-      p.team.toLowerCase().includes(q) ||
-      String(p.year).includes(q);
-    return matchesCat && matchesSearch;
-  });
+  const selectedCatName =
+    selectedCat === 'all'
+      ? tAdmin('allCategories')
+      : categories?.find((c) => c.id === selectedCat)?.name || tAdmin('allCategories');
 
   return (
     <div className="space-y-6">
@@ -76,74 +92,164 @@ export default function AdminProductsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight uppercase text-vintage-dark">
-            {t('admin.products')}
+            {tAdmin('products')}
           </h1>
           <p className="text-xs text-[#71717A] mt-0.5">
-            Gérez votre catalogue de maillots, prix, tailles et statuts
+            {tAdmin('manageProductsSubtitle')}
           </p>
         </div>
 
         <Link
           href="/admin/products/new"
-          className="inline-flex items-center gap-2 bg-vintage-red hover:bg-[#A82E18] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg transition-colors shadow-2xs"
+          className="inline-flex items-center gap-2 bg-vintage-red hover:bg-[#A82E18] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>{t('admin.addProduct')}</span>
+          <span>{tAdmin('addProduct')}</span>
         </Link>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-vintage-border">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 text-[#A1A1AA] absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-4 rounded-xl border border-vintage-border">
+        {/* Search Box (takes all remaining flex width) */}
+        <div className="relative flex-1">
+          {isFetching ? (
+            <Loader2 className={`w-4 h-4 text-vintage-red animate-spin absolute ${isArabic ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
+          ) : (
+            <Search className={`w-4 h-4 text-[#A1A1AA] absolute ${isArabic ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
+          )}
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher joueur, équipe, année..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-vintage-border focus:outline-hidden focus:ring-2 focus:ring-vintage-red/20"
+            placeholder={tAdmin('searchPlaceholder')}
+            className={`w-full ${isArabic ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'} py-2.5 text-xs rounded-lg border border-vintage-border bg-[#FAF8F5]/40 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-vintage-red/20 focus:border-vintage-red/50 transition-all font-medium`}
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <select
-            value={selectedCat}
-            onChange={(e) => setSelectedCat(e.target.value)}
-            className="text-xs border border-vintage-border rounded-lg px-3 py-2 bg-white text-vintage-dark font-medium"
+        {/* Category Dropdown */}
+        <div className="relative shrink-0" ref={catDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsCatOpen((prev) => !prev)}
+            className={`inline-flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs w-full sm:w-auto sm:min-w-55 ${
+              selectedCat !== 'all'
+                ? 'border-vintage-red/40 bg-vintage-red/5 text-vintage-red'
+                : 'border-vintage-border bg-[#FAF8F5]/60 hover:bg-white text-vintage-dark'
+            }`}
           >
-            <option value="all">Toutes les catégories</option>
-            {categories?.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+            <div className="flex items-center gap-2 truncate">
+              <Filter className={`w-3.5 h-3.5 shrink-0 ${selectedCat !== 'all' ? 'text-vintage-red' : 'text-[#71717A]'}`} />
+              <span className="truncate">{selectedCatName}</span>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-[#A1A1AA] shrink-0 transition-transform duration-200 ${isCatOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isCatOpen && (
+            <div
+              className={`absolute z-30 mt-2 w-full sm:w-64 bg-white rounded-xl border border-vintage-border shadow-xl p-1.5 space-y-1 ${
+                isArabic ? 'left-0' : 'right-0'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCat('all');
+                  setIsCatOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  selectedCat === 'all'
+                    ? 'bg-vintage-red text-white'
+                    : 'text-vintage-dark hover:bg-[#FAF8F5]'
+                }`}
+              >
+                <span>{tAdmin('allCategories')}</span>
+                {selectedCat === 'all' && <Check className="w-3.5 h-3.5" />}
+              </button>
+
+              <div className="h-px bg-vintage-border/70 my-1" />
+
+              <div className="max-h-56 overflow-y-auto space-y-0.5">
+                {categories?.map((cat) => {
+                  const isSelected = selectedCat === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCat(cat.id);
+                        setIsCatOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-vintage-red text-white font-bold'
+                          : 'text-vintage-dark hover:bg-[#FAF8F5]'
+                      }`}
+                    >
+                      <span className="truncate">{cat.name}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Products Table */}
       <div className="bg-white rounded-xl border border-vintage-border overflow-hidden shadow-2xs">
-        {isLoading ? (
-          <div className="p-12 text-center text-xs text-[#71717A]">
-            {t('common.loading')}
-          </div>
-        ) : filteredProducts.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] border-b border-vintage-border text-[#71717A] uppercase font-bold tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">Image</th>
-                  <th className="px-4 py-3">Maillot / Joueur</th>
-                  <th className="px-4 py-3">Catégorie</th>
-                  <th className="px-4 py-3">Prix</th>
-                  <th className="px-4 py-3">Stock Tailles</th>
-                  <th className="px-4 py-3 text-center">En Vedette</th>
-                  <th className="px-4 py-3 text-center">Actif (Public)</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-vintage-border">
-                {filteredProducts.map((p) => {
+        <div className="overflow-x-auto">
+          <table className={`w-full ${isArabic ? 'text-right' : 'text-left'} text-xs`}>
+            <thead className="bg-[#FAF8F5] border-b border-vintage-border text-[#71717A] uppercase font-bold tracking-wider">
+              <tr>
+                <th className="px-4 py-3">#</th>
+                <th className="px-4 py-3">{tAdmin('colJersey')}</th>
+                <th className="px-4 py-3">{tAdmin('colCategory')}</th>
+                <th className="px-4 py-3">{tAdmin('colPrice')}</th>
+                <th className="px-4 py-3">{tAdmin('colSizes')}</th>
+                <th className="px-4 py-3 text-center">{tAdmin('featuredProducts')}</th>
+                <th className="px-4 py-3 text-center">{tAdmin('colStatus')}</th>
+                <th className="px-4 py-3 text-start">{tAdmin('colAction')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-vintage-border">
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`shimmer-${i}`} className="animate-pulse">
+                    <td className="px-4 py-3">
+                      <div className="w-12 h-14 rounded-lg bg-[#EBE7DF]" />
+                    </td>
+                    <td className="px-4 py-3 space-y-2">
+                      <div className="w-40 h-3.5 bg-[#EBE7DF] rounded" />
+                      <div className="w-24 h-2.5 bg-[#EBE7DF]/70 rounded" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="w-20 h-3 bg-[#EBE7DF] rounded" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="w-12 h-3.5 bg-[#EBE7DF] rounded" />
+                    </td>
+                    <td className="px-4 py-3 space-y-1.5">
+                      <div className="w-28 h-3 bg-[#EBE7DF] rounded" />
+                      <div className="w-16 h-2 bg-[#EBE7DF]/70 rounded" />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="w-7 h-7 rounded-lg bg-[#EBE7DF] mx-auto" />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="w-16 h-5 rounded-full bg-[#EBE7DF] mx-auto" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-start gap-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#EBE7DF]" />
+                        <div className="w-7 h-7 rounded-lg bg-[#EBE7DF]" />
+                        <div className="w-7 h-7 rounded-lg bg-[#EBE7DF]" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : products && products.length > 0 ? (
+                products.map((p) => {
                   const primaryImg =
                     p.images.find((img) => img.is_primary)?.image_url ||
                     p.images[0]?.image_url ||
@@ -190,10 +296,10 @@ export default function AdminProductsPage() {
                       {/* Sizes & Stock */}
                       <td className="px-4 py-3">
                         <div className="text-[11px] text-[#52525B]">
-                          {availableSizes || <span className="text-red-500 font-semibold">Rupture totale</span>}
+                          {availableSizes || <span className="text-red-500 font-semibold">{tAdmin('statusSoldOut')}</span>}
                         </div>
                         <div className="text-[10px] text-[#A1A1AA]">
-                          Total stock: {totalStock}
+                          {tAdmin('labelStock')}: {totalStock}
                         </div>
                       </td>
 
@@ -201,17 +307,22 @@ export default function AdminProductsPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           type="button"
+                          disabled={featuredMutation.isPending && featuredMutation.variables?.id === p.id}
                           onClick={() =>
                             featuredMutation.mutate({ id: p.id, featured: !p.featured })
                           }
-                          className={`p-1.5 rounded-full transition-colors ${
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer inline-flex items-center justify-center ${
                             p.featured
-                              ? 'text-amber-500 hover:text-amber-600 bg-amber-50'
-                              : 'text-zinc-300 hover:text-zinc-400'
+                              ? 'border-amber-300 bg-amber-50 text-amber-500 hover:bg-amber-100 shadow-2xs'
+                              : 'border-vintage-border bg-white text-zinc-300 hover:text-zinc-500 hover:border-zinc-400'
                           }`}
-                          title={p.featured ? 'Retirer des vedettes' : 'Mettre en vedette'}
+                          title={p.featured ? tAdmin('featuredProducts') : tAdmin('labelFeatured')}
                         >
-                          <Star className={`w-4 h-4 ${p.featured ? 'fill-current' : ''}`} />
+                          {featuredMutation.isPending && featuredMutation.variables?.id === p.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                          ) : (
+                            <Star className={`w-4 h-4 ${p.featured ? 'fill-current' : ''}`} />
+                          )}
                         </button>
                       </td>
 
@@ -219,58 +330,73 @@ export default function AdminProductsPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           type="button"
+                          disabled={activeMutation.isPending && activeMutation.variables?.id === p.id}
                           onClick={() =>
                             activeMutation.mutate({ id: p.id, active: !p.active })
                           }
-                          className={`inline-block px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
                             p.active
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                              : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200'
                           }`}
                         >
-                          {p.active ? t('common.active') : t('common.inactive')}
+                          {activeMutation.isPending && activeMutation.variables?.id === p.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <span className={`w-1.5 h-1.5 rounded-full ${p.active ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                          )}
+                          <span>{p.active ? tAdmin('statusActive') : tAdmin('statusInactive')}</span>
                         </button>
                       </td>
 
                       {/* Actions */}
-                      <td className="px-4 py-3 text-right space-x-2">
-                        <Link
-                          href={`/product/${p.slug}`}
-                          target="_blank"
-                          className="inline-block p-1 text-[#71717A] hover:text-vintage-dark"
-                          title="Voir sur le site"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Link>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-start gap-1.5">
+                          <Link
+                            href={`/product/${p.slug}`}
+                            target="_blank"
+                            className="p-1.5 rounded-lg border border-vintage-border bg-white text-[#71717A] hover:text-vintage-dark hover:border-[#71717A] hover:bg-[#FAF8F5] transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
+                            title={tAdmin('actionView')}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
 
-                        <Link
-                          href={`/admin/products/${p.id}/edit`}
-                          className="inline-block p-1 text-vintage-red hover:text-[#A82E18]"
-                          title="Modifier"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Link>
+                          <Link
+                            href={`/admin/products/${p.id}/edit`}
+                            className="p-1.5 rounded-lg border border-vintage-red/30 bg-vintage-red/5 text-vintage-red hover:bg-vintage-red hover:text-white hover:border-vintage-red transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
+                            title={tAdmin('actionEdit')}
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </Link>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(p.id, p.name)}
-                          className="inline-block p-1 text-red-500 hover:text-red-700"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            type="button"
+                            disabled={deleteMutation.isPending && deleteMutation.variables === p.id}
+                            onClick={() => handleDelete(p.id)}
+                            className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer inline-flex items-center justify-center"
+                            title={tAdmin('actionDelete')}
+                          >
+                            {deleteMutation.isPending && deleteMutation.variables === p.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-12 text-center text-xs text-[#71717A]">
-            Aucun maillot ne correspond à vos critères.
-          </div>
-        )}
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="p-12 text-center text-xs text-[#71717A]">
+                    {tAdmin('noJerseysFound')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -1,17 +1,35 @@
 import { createClient } from '@/lib/supabase/client';
 import { Category, ProductWithDetails } from '@/types/database';
 
-export async function fetchAdminProducts(): Promise<ProductWithDetails[]> {
+export interface AdminProductFilterOptions {
+  search?: string;
+  categoryId?: string;
+}
+
+export async function fetchAdminProducts(options?: AdminProductFilterOptions): Promise<ProductWithDetails[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('products')
     .select(`
       *,
       category:categories(*),
       variants:product_variants(*),
       images:product_images(*)
-    `)
-    .order('created_at', { ascending: false });
+    `);
+
+  if (options?.categoryId && options.categoryId !== 'all') {
+    query = query.eq('category_id', options.categoryId);
+  }
+
+  if (options?.search && options.search.trim() !== '') {
+    const q = options.search.trim();
+    // ilike backend search across name, player, team, and description
+    query = query.or(`name.ilike.%${q}%,player.ilike.%${q}%,team.ilike.%${q}%,description.ilike.%${q}%`);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);

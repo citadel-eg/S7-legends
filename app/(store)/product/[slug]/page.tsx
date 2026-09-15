@@ -15,19 +15,25 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
   if (!product) {
     return {
-      title: 'Maillot non trouvé — S7 LÉGENDES',
+      title: 'Maillot non trouvé',
     };
   }
 
   const primaryImage = product.images[0]?.image_url || '/assets/logo-crest.png';
 
   return {
-    title: `${product.player.toUpperCase()} ${product.year} — ${product.team} | S7 LÉGENDES`,
+    title: `${product.player.toUpperCase()} ${product.year} — ${product.team}`,
     description: product.description,
     openGraph: {
-      title: `${product.name} — S7 LÉGENDES`,
+      title: `${product.name} | S7 LÉGENDES`,
       description: product.description,
-      images: [{ url: primaryImage }],
+      images: [{ url: primaryImage, width: 800, height: 600, alt: product.name }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.name} | S7 LÉGENDES`,
+      description: product.description,
+      images: [primaryImage],
     },
   };
 }

@@ -30,7 +30,7 @@ export const productFormSchema = z.object({
   featured: z.boolean(),
   active: z.boolean(),
   variants: z.array(variantSchema),
-  images: z.array(imageSchema),
+  images: z.array(imageSchema).min(1, 'يجب إضافة صورة واحدة على الأقل / At least one image is required'),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;

@@ -63,13 +63,13 @@ export function ProductCard({
     }
   }
 
-  const availableSizes = product.variants.length > 0
+  const availableSizes = product.variants && product.variants.length > 0
     ? product.variants.filter((v) => v.available && v.stock > 0).map((v) => v.size)
     : [];
 
   const availableSizesText = availableSizes.length > 0
     ? availableSizes.join(' • ')
-    : 'S • M • L';
+    : '';
 
   const defaultSize = availableSizes[0] || 'M';
 

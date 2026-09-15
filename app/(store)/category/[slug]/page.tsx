@@ -22,13 +22,19 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
   if (!category) {
     return {
-      title: 'Catégorie non trouvée — S7 LÉGENDES',
+      title: 'Catégorie non trouvée',
     };
   }
 
+  const description = category.description || `Découvrez nos maillots de football vintage dans la catégorie ${category.name}.`;
+
   return {
-    title: `${category.name} — Maillots Rares | S7 LÉGENDES`,
-    description: category.description || `Découvrez nos maillots de football vintage dans la catégorie ${category.name}.`,
+    title: `${category.name} — Maillots Rares`,
+    description,
+    openGraph: {
+      title: `${category.name} — Maillots Rares | S7 LÉGENDES`,
+      description,
+    },
   };
 }
 

@@ -8,7 +8,7 @@ import { t } from '@/i18n';
 import { Search, Home, ShoppingBag, ArrowRight } from 'lucide-react';
 
 export const metadata = {
-  title: '404 - Page Hors-Jeu | S7 LÉGENDES',
+  title: '404 - Page Hors-Jeu',
   description: 'Page introuvable sur S7 Légendes. Explorez nos maillots rares et archives de football vintage.',
 };
 

@@ -1,0 +1,36 @@
+# Supabase Keep-Alive
+# Prevents Supabase free-tier project from pausing after 7 days of inactivity.
+# Runs a lightweight SELECT query every 3 days to keep the project active.
+
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Run every 3 days at 06:00 UTC
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          echo "Pinging Supabase to prevent inactivity pause..."
+          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/categories?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          echo "HTTP Status: $RESPONSE"
+          
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Supabase is alive and responding."
+          else
+            echo "❌ Supabase returned status $RESPONSE. Check the project."
+            exit 1
+          fi
+
+      - name: Log timestamp
+        run: echo "Keep-alive ping completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"

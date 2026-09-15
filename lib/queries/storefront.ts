@@ -130,23 +130,12 @@ export async function getFilteredProducts(options: FilterProductsOptions = {}): 
       (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
     );
 
-    if (
-      sortedImages.length === 0 ||
-      sortedImages[0].image_url.includes('jersey-france') ||
-      sortedImages[0].image_url.includes('jersey-milan')
-    ) {
-      const fallbackUrl =
-        p.slug.includes('kaka') ? '/assets/kaka-milan-2007.png' :
-        p.slug.includes('zidane') ? '/assets/zidane-france-1998.png' :
-        p.slug.includes('messi') ? '/assets/messi-barca-2009.png' :
-        p.slug.includes('ronaldo') ? '/assets/ronaldo-large.png' :
-        '/assets/hero-rack.png';
-
+    if (sortedImages.length === 0) {
       sortedImages = [
         {
           id: `img-${p.id}`,
           product_id: p.id,
-          image_url: fallbackUrl,
+          image_url: '/assets/hero-rack.png',
           alt_text: p.name,
           sort_order: 0,
           is_primary: true,
@@ -202,19 +191,12 @@ export async function getProductBySlug(slug: string): Promise<ProductWithDetails
     (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
   );
 
-  if (sortedImages.length === 0 || sortedImages[0].image_url.includes('jersey-france') || sortedImages[0].image_url.includes('jersey-milan')) {
-    const fallbackUrl =
-      data.slug.includes('kaka') ? '/assets/kaka-milan-2007.png' :
-      data.slug.includes('zidane') ? '/assets/zidane-france-1998.png' :
-      data.slug.includes('messi') ? '/assets/messi-barca-2009.png' :
-      data.slug.includes('ronaldo') ? '/assets/ronaldo-large.png' :
-      '/assets/hero-rack.png';
-
+  if (sortedImages.length === 0) {
     sortedImages = [
       {
         id: `img-${data.id}-main`,
         product_id: data.id,
-        image_url: fallbackUrl,
+        image_url: '/assets/hero-rack.png',
         alt_text: data.name,
         sort_order: 0,
         is_primary: true,

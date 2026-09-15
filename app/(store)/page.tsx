@@ -1,40 +1,38 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getActiveProducts } from '@/lib/queries/storefront';
+import { getActiveProducts, getActiveCategories } from '@/lib/queries/storefront';
 import { FeaturedCarousel } from '@/components/home/featured-carousel';
 import { SocialSection } from '@/components/home/social-section';
 import { VintageBadge } from '@/components/ui/vintage-badge';
 import { t } from '@/i18n';
 
 export default async function HomePage() {
-  const featuredProducts = await getActiveProducts({ featuredOnly: true, limit: 3 });
-  const categoryCards = [
-    {
-      num: '01',
-      title: 'Maillots rares',
-      slug: 'maillots-rares',
-      img: '/assets/cat-rare-figma.png',
-    },
-    {
-      num: '02',
-      title: 'Authentique',
-      slug: 'authentique',
-      img: '/assets/cat-auth-figma.png',
-    },
-    {
-      num: '03',
-      title: 'Coupe du Monde',
-      slug: 'coupe-du-monde',
-      img: '/assets/cat-wc-figma.png',
-    },
-    {
-      num: '04',
-      title: 'UCL',
-      slug: 'ucl',
-      img: '/assets/cat-ucl-figma.png',
-    },
-  ];
+  const [featuredProducts, dbCategories] = await Promise.all([
+    getActiveProducts({ featuredOnly: true, limit: 3 }),
+    getActiveCategories(),
+  ]);
+
+  const categoryImages: Record<string, string> = {
+    'maillots-rares': '/assets/cat-rare-figma.png',
+    'authentique': '/assets/cat-auth-figma.png',
+    'coupe-du-monde': '/assets/cat-wc-figma.png',
+    'ucl': '/assets/cat-ucl-figma.png',
+  };
+
+  const categoryCards = dbCategories.length > 0
+    ? dbCategories.slice(0, 4).map((cat, idx) => ({
+        num: `0${idx + 1}`,
+        title: cat.name,
+        slug: cat.slug,
+        img: categoryImages[cat.slug] || '/assets/cat-rare-figma.png',
+      }))
+    : [
+        { num: '01', title: 'Maillots rares', slug: 'maillots-rares', img: '/assets/cat-rare-figma.png' },
+        { num: '02', title: 'Authentique', slug: 'authentique', img: '/assets/cat-auth-figma.png' },
+        { num: '03', title: 'Coupe du Monde', slug: 'coupe-du-monde', img: '/assets/cat-wc-figma.png' },
+        { num: '04', title: 'UCL', slug: 'ucl', img: '/assets/cat-ucl-figma.png' },
+      ];
 
   return (
     <div className="bg-[#f7f3ec] flex flex-col w-full overflow-x-hidden">

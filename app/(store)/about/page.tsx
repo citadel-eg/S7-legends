@@ -9,9 +9,14 @@ import { getActiveProducts } from '@/lib/queries/storefront';
 import { ProductCard, WhatsAppIcon } from '@/components/product/product-card';
 
 export const metadata: Metadata = {
-  title: 'À Propos — Histoire & Communauté | S7 LÉGENDES',
+  title: 'À Propos — Histoire & Communauté',
   description:
-    'Découvrez l’histoire de S7 LÉGENDES, notre passion pour les maillots rares de football et notre communauté de plus de 9 750 passionnés sur Facebook, Instagram, TikTok et WhatsApp.',
+    'Découvrez l\'histoire de S7 LÉGENDES, notre passion pour les maillots rares de football et notre communauté de plus de 9 750 passionnés sur Facebook, Instagram, TikTok et WhatsApp.',
+  openGraph: {
+    title: 'À Propos — Histoire & Communauté | S7 LÉGENDES',
+    description:
+      'Découvrez l\'histoire de S7 LÉGENDES, notre passion pour les maillots rares de football et notre communauté.',
+  },
 };
 
 export default async function AboutPage() {

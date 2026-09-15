@@ -3,8 +3,12 @@ import { getActiveCategories, getFilteredProducts } from '@/lib/queries/storefro
 import { ShopView } from '@/components/shop/shop-view';
 
 export const metadata: Metadata = {
-  title: 'Boutique — Achetez des Maillots Rares | S7 LÉGENDES',
+  title: 'Boutique — Achetez des Maillots Rares',
   description: 'Découvrez notre collection complète de maillots de football vintage, pièces rares, éditions de Ligue des Champions et Coupe du Monde.',
+  openGraph: {
+    title: 'Boutique — Maillots Rares | S7 LÉGENDES',
+    description: 'Découvrez notre collection complète de maillots de football vintage, pièces rares, éditions de Ligue des Champions et Coupe du Monde.',
+  },
 };
 
 interface ShopPageProps {
